@@ -11,12 +11,16 @@ import ChatScreen from "./components/GameInfo/ChatScreen";
 const App: React.FC = () => {
   return (
     <Box minH="100vh" bg="gray.100" p={8}>
-      <Container maxW="4xl">
+      <Container maxW="6xl">
         <Heading as="h1" size="xl" mb={8}>
           Zeke Chess Agent
         </Heading>
 
-        <Grid templateColumns="2fr 1fr" gap={8}>
+        <Grid templateColumns="1fr 2fr 1fr" gap={8}>
+          <GridItem>
+            <MoveHistory />
+          </GridItem>
+
           <GridItem>
             <Board />
             <ErrorDisplay />
@@ -28,10 +32,9 @@ const App: React.FC = () => {
 
           <GridItem>
             <ScoreDisplay />
-            <Box mb={4}>
-              <MoveHistory />
+            <Box mt={4}>
+              <ChatScreen />
             </Box>
-            <ChatScreen />
           </GridItem>
         </Grid>
       </Container>

@@ -7,23 +7,24 @@ import {
   playCheckSound,
   playGameEndSound,
 } from "../utils/sound";
+import { stockfishService } from "../services/stockfishService";
 
 interface GameStore extends GameState {
-  makeMove: (from: Square, to: Square) => void;
+  makeMove: (from: Square, to: Square) => Promise<void>;
   setDifficulty: (level: DifficultyLevel) => void;
   resetGame: () => void;
   score: number;
   isLoading: boolean;
   error: string | null;
-  sendMessage: (text: string) => void;
+  sendMessage: (text: string) => Promise<void>;
 }
 
-const getAgentResponse = (
+const getAgentResponse = async (
   game: Chess,
   status: string,
   difficulty: DifficultyLevel,
   userMessage?: string
-): string => {
+): Promise<string> => {
   // Handle user questions about the game
   if (userMessage) {
     const lowerMessage = userMessage.toLowerCase();
@@ -32,7 +33,7 @@ const getAgentResponse = (
       lowerMessage.includes("help") ||
       lowerMessage.includes("suggest")
     ) {
-      const score = evaluatePosition(game);
+      const score = await evaluatePosition(game);
       if (score < -1) {
         return "You're in a strong position! Look for forcing moves and ways to maintain your advantage.";
       } else if (score > 1) {
@@ -59,81 +60,12 @@ const getAgentResponse = (
     }
   }
 
-  const position = game.fen();
-  const isCheck = game.isCheck();
-  const moveCount = Math.floor(game.moveNumber() / 2);
-  const score = evaluatePosition(game);
-  const material = countMaterial(game);
-
-  // Opening stage responses
-  if (moveCount < 4) {
-    const openingResponses = [
-      "I'm following classical opening principles. Development and center control are key!",
-      "The opening phase is crucial. Let's see how the position develops.",
-      "I'm aiming for a solid position in the opening. How will you respond?",
-    ];
-    return openingResponses[
-      Math.floor(Math.random() * openingResponses.length)
-    ];
-  }
-
-  // Check situations
-  if (isCheck) {
-    const checkResponses = [
-      "Check! How will you defend?",
-      "I've put your king in check. What's your response?",
-      "Check! The king is under attack.",
-    ];
-    return checkResponses[Math.floor(Math.random() * checkResponses.length)];
-  }
-
-  // Material imbalance responses
-  if (Math.abs(material) >= 3) {
-    if (material > 0) {
-      return "I have a material advantage, but there's still play in the position.";
-    } else {
-      return "You have more material, but I'll try to create counterplay.";
-    }
-  }
-
-  // Positional responses based on evaluation
-  if (score > 2) {
-    return "I'm in a difficult position, but I'll look for tactical chances.";
-  } else if (score < -2) {
-    return "I have a strong position. Be careful with your next moves!";
-  }
-
-  // Generic responses for balanced positions
-  const responses = [
-    "Interesting position! There are several plans to consider.",
-    "The position is complex with chances for both sides.",
-    "This requires careful calculation. Let me think about the possibilities.",
-    "A critical moment in the game. Every move counts!",
-  ];
-
-  return responses[Math.floor(Math.random() * responses.length)];
+  const score = await evaluatePosition(game);
+  const moveNumber = Math.floor(game.moveNumber() / 2);
+  return stockfishService.getEngineComment(score, moveNumber);
 };
 
-// Helper function to count material difference
-const countMaterial = (game: Chess): number => {
-  const values = { p: 1, n: 3, b: 3, r: 5, q: 9 };
-  let total = 0;
-  const board = game.board();
-
-  for (let i = 0; i < 8; i++) {
-    for (let j = 0; j < 8; j++) {
-      const piece = board[i][j];
-      if (piece) {
-        const value = values[piece.type as keyof typeof values] || 0;
-        total += piece.color === "w" ? value : -value;
-      }
-    }
-  }
-
-  return total;
-};
-
-export const useGameStore = create<GameStore>((set) => ({
+export const useGameStore = create<GameStore>((set, get) => ({
   game: new Chess(),
   difficulty: "beginner",
   playerColor: "white",
@@ -150,146 +82,146 @@ export const useGameStore = create<GameStore>((set) => ({
     },
   ],
 
-  sendMessage: (text: string) =>
-    set((state) => {
-      const userMessage: ChatMessage = {
-        text,
-        sender: "user",
-        timestamp: new Date(),
-      };
+  sendMessage: async (text: string) => {
+    const state = get();
+    const userMessage: ChatMessage = {
+      text,
+      sender: "user",
+      timestamp: new Date(),
+    };
 
-      const agentResponse: ChatMessage = {
-        text: getAgentResponse(
-          state.game,
-          state.status,
-          state.difficulty,
-          text
-        ),
-        sender: "agent",
-        timestamp: new Date(),
-      };
+    const agentResponse: ChatMessage = {
+      text: await getAgentResponse(
+        state.game,
+        state.status,
+        state.difficulty,
+        text
+      ),
+      sender: "agent",
+      timestamp: new Date(),
+    };
 
-      return {
-        ...state,
-        messages: [...state.messages, userMessage, agentResponse],
-      };
-    }),
+    set({
+      messages: [...state.messages, userMessage, agentResponse],
+    });
+  },
 
-  makeMove: (from, to) =>
-    set((state) => {
-      const game = new Chess(state.game.fen());
-      try {
-        set({ isLoading: true, error: null });
+  makeMove: async (from: Square, to: Square) => {
+    const state = get();
+    const game = new Chess(state.game.fen());
 
-        // Player move
-        const move = game.move({ from, to });
-        if (!move) {
-          set({ isLoading: false, error: "Invalid move" });
-          return state;
-        }
+    try {
+      set({ isLoading: true, error: null });
 
-        // Play appropriate sound for player move
-        const isCapture = move.captured !== undefined;
-        playMoveSound(isCapture);
-        if (game.isCheck()) playCheckSound();
+      // Player move
+      const move = game.move({ from, to });
+      if (!move) {
+        set({ isLoading: false, error: "Invalid move" });
+        return;
+      }
 
-        const moveHistory = [...state.moveHistory, `${from}-${to}`];
-        let score = evaluatePosition(game);
+      // Play appropriate sound for player move
+      const isCapture = move.captured !== undefined;
+      playMoveSound(isCapture);
+      if (game.isCheck()) playCheckSound();
 
-        // Check game status after player move
-        if (game.isGameOver()) {
-          set({ isLoading: false });
-          playGameEndSound();
-          const gameEndMessage: ChatMessage = {
-            text: getAgentResponse(
-              game,
-              game.isCheckmate()
-                ? "checkmate"
-                : game.isDraw()
-                ? "draw"
-                : "stalemate",
-              state.difficulty
-            ),
-            sender: "agent",
-            timestamp: new Date(),
-          };
-          return {
-            ...state,
+      const moveHistory = [...state.moveHistory, `${from}-${to}`];
+      let score = await evaluatePosition(game);
+
+      // Check game status after player move
+      if (game.isGameOver()) {
+        set({ isLoading: false });
+        playGameEndSound();
+        const gameEndMessage: ChatMessage = {
+          text: await getAgentResponse(
             game,
-            moveHistory,
-            score,
-            status: game.isCheckmate()
+            game.isCheckmate()
               ? "checkmate"
               : game.isDraw()
               ? "draw"
               : "stalemate",
-            messages: [...state.messages, gameEndMessage],
-          };
-        }
-
-        // AI move
-        const aiMove = getBestMove(game, state.difficulty);
-        game.move(aiMove);
-
-        // Add agent's comment about the move
-        const agentMessage: ChatMessage = {
-          text: getAgentResponse(game, "playing", state.difficulty),
+            state.difficulty
+          ),
           sender: "agent",
           timestamp: new Date(),
         };
 
-        // Play appropriate sound for AI move
-        const isAiCapture = aiMove.captured !== undefined;
-        playMoveSound(isAiCapture);
-        if (game.isCheck()) playCheckSound();
-
-        moveHistory.push(`${aiMove.from}-${aiMove.to}`);
-        score = evaluatePosition(game);
-
-        // Check game status after AI move
-        const status = game.isGameOver()
-          ? game.isCheckmate()
+        set({
+          game,
+          moveHistory,
+          score,
+          status: game.isCheckmate()
             ? "checkmate"
             : game.isDraw()
             ? "draw"
-            : "stalemate"
-          : "playing";
+            : "stalemate",
+          messages: [...state.messages, gameEndMessage],
+        });
+        return;
+      }
 
-        if (game.isGameOver()) {
-          playGameEndSound();
-          const gameEndMessage: ChatMessage = {
-            text: getAgentResponse(game, status, state.difficulty),
-            sender: "agent",
-            timestamp: new Date(),
-          };
-          return {
-            ...state,
-            game,
-            moveHistory,
-            score,
-            status,
-            messages: [...state.messages, agentMessage, gameEndMessage],
-          };
-        }
+      // AI move
+      const aiMove = await getBestMove(game, state.difficulty);
+      game.move(aiMove);
 
-        set({ isLoading: false });
-        return {
-          ...state,
+      // Add agent's comment about the move
+      const agentMessage: ChatMessage = {
+        text: await getAgentResponse(game, "playing", state.difficulty),
+        sender: "agent",
+        timestamp: new Date(),
+      };
+
+      // Play appropriate sound for AI move
+      const isAiCapture = aiMove.captured !== undefined;
+      playMoveSound(isAiCapture);
+      if (game.isCheck()) playCheckSound();
+
+      moveHistory.push(`${aiMove.from}-${aiMove.to}`);
+      score = await evaluatePosition(game);
+
+      // Check game status after AI move
+      const status = game.isGameOver()
+        ? game.isCheckmate()
+          ? "checkmate"
+          : game.isDraw()
+          ? "draw"
+          : "stalemate"
+        : "playing";
+
+      if (game.isGameOver()) {
+        playGameEndSound();
+        const gameEndMessage: ChatMessage = {
+          text: await getAgentResponse(game, status, state.difficulty),
+          sender: "agent",
+          timestamp: new Date(),
+        };
+
+        set({
+          game,
+          moveHistory,
+          score,
+          status,
+          messages: [...state.messages, agentMessage, gameEndMessage],
+        });
+      } else {
+        set({
           game,
           moveHistory,
           score,
           status,
           messages: [...state.messages, agentMessage],
-        };
-      } catch (e) {
-        set({ isLoading: false, error: "An error occurred during the move" });
-        return state;
+        });
       }
-    }),
 
-  setDifficulty: (level) =>
+      set({ isLoading: false });
+    } catch (e) {
+      set({ isLoading: false, error: "An error occurred during the move" });
+    }
+  },
+
+  setDifficulty: (level) => {
+    stockfishService.setDifficulty(level);
     set((state) => ({
-      ...state,
       difficulty: level,
       messages: [
         ...state.messages,
@@ -299,7 +231,8 @@ export const useGameStore = create<GameStore>((set) => ({
           timestamp: new Date(),
         },
       ],
-    })),
+    }));
+  },
 
   resetGame: () =>
     set({
