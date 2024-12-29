@@ -36,13 +36,19 @@ git clone https://github.com/mfarsx/zeke-chess-agent.git
 cd zeke-chess-agent
 ```
 
-2. Install dependencies:
+2. Switch to development branch:
+
+```bash
+git checkout dev
+```
+
+3. Install dependencies:
 
 ```bash
 npm install
 ```
 
-3. Start the development server:
+4. Start the development server:
 
 ```bash
 npm start
@@ -58,9 +64,64 @@ The application will be available at `http://localhost:3000`.
 - **Game Analysis**: Get real-time evaluation of the position
 - **Sound Effects**: Auditory feedback for moves, captures, and special events
 
+## Development
+
+### Branch Structure
+
+- `main` - Production branch, contains stable releases
+- `dev` - Development branch, contains latest features and fixes
+- `feature/*` - Feature branches for new functionality
+- `bugfix/*` - Bug fix branches
+- `release/*` - Release preparation branches
+
+### Development Workflow
+
+1. Create a new branch from `dev` for your feature or fix:
+
+```bash
+git checkout dev
+git pull origin dev
+git checkout -b feature/your-feature-name
+```
+
+2. Make your changes and commit them:
+
+```bash
+git add .
+git commit -m "Description of your changes"
+```
+
+3. Push your branch and create a Pull Request:
+
+```bash
+git push origin feature/your-feature-name
+```
+
+4. Create a Pull Request on GitHub from your branch to `dev`
+
+### Code Style
+
+- Follow TypeScript best practices
+- Use Prettier for code formatting
+- Write meaningful commit messages
+- Add comments for complex logic
+- Update tests when modifying features
+
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create your feature branch from `dev`
+3. Make your changes
+4. Submit a Pull Request to the `dev` branch
+
+Please make sure to:
+
+- Update tests as needed
+- Update documentation
+- Follow the existing code style
+- Add descriptive commit messages
 
 ## License
 
