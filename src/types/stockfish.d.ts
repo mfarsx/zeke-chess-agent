@@ -1,6 +1,6 @@
 declare module "stockfish.js" {
-  const content: string;
-  export default content;
+  const workerUrl: string;
+  export = workerUrl;
 }
 
 declare module "*.js" {

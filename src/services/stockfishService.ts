@@ -1,4 +1,4 @@
-import { Engine } from "stockfish.js";
+import stockfishPath from "stockfish.js";
 
 class StockfishService {
   private engine: Worker | null = null;
@@ -12,8 +12,9 @@ class StockfishService {
 
   private initEngine() {
     try {
-      // Create a web worker from stockfish.js
-      this.engine = new Worker(new URL("stockfish.js", import.meta.url));
+      // Load stockfish from node_modules
+      const workerUrl = require("stockfish.js");
+      this.engine = new Worker(workerUrl);
 
       this.engine.onmessage = (event: MessageEvent) => {
         const message = event.data;
