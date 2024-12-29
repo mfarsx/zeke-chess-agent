@@ -6,6 +6,8 @@ interface SquareProps {
   isSelected?: boolean;
   isPossibleMove?: boolean;
   children?: React.ReactNode;
+  onClick?: () => void;
+  "aria-label"?: string;
 }
 
 const Square: React.FC<SquareProps> = ({
@@ -13,6 +15,8 @@ const Square: React.FC<SquareProps> = ({
   isSelected,
   isPossibleMove,
   children,
+  onClick,
+  "aria-label": ariaLabel,
 }) => {
   return (
     <Box
@@ -31,6 +35,9 @@ const Square: React.FC<SquareProps> = ({
       alignItems="center"
       justifyContent="center"
       position="relative"
+      role="button"
+      aria-label={ariaLabel}
+      onClick={onClick}
       _hover={{
         cursor: "pointer",
         bg: isSelected

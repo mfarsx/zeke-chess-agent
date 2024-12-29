@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Grid, GridItem, Spinner, Center } from "@chakra-ui/react";
+import { Grid, GridItem, Spinner, Center, Box, Text } from "@chakra-ui/react";
 import Square from "./Square";
 import Piece from "./Piece";
 import { useGameStore } from "../../store/gameStore";
@@ -47,51 +47,82 @@ const Board: React.FC = () => {
     const isPossibleMove = possibleMoves.includes(position);
 
     return (
-      <GridItem
+      <Square
         key={i}
-        w="12"
-        h="12"
+        black={black}
+        isSelected={isSelected}
+        isPossibleMove={isPossibleMove}
         onClick={() => handleSquareClick(position)}
-        role="button"
         aria-label={`${position} ${piece ? piece.type : "empty"} square`}
       >
-        <Square
-          black={black}
-          isSelected={isSelected}
-          isPossibleMove={isPossibleMove}
-        >
-          {piece && <Piece type={piece.type} color={piece.color} />}
-        </Square>
-      </GridItem>
+        {piece && <Piece type={piece.type} color={piece.color} />}
+      </Square>
     );
   };
 
   return (
-    <Grid
-      templateColumns="repeat(8, 1fr)"
-      width="96"
-      height="96"
-      border="2px"
-      borderColor="gray.300"
-      position="relative"
-      role="grid"
-      aria-label="Chess board"
-    >
-      {isLoading && (
-        <Center
-          position="absolute"
-          top="0"
-          left="0"
-          right="0"
-          bottom="0"
-          bg="blackAlpha.300"
-          zIndex={1}
-        >
-          <Spinner size="xl" />
-        </Center>
-      )}
-      {[...Array(64)].map((_, i) => renderSquare(i))}
-    </Grid>
+    <Box position="relative" maxW="600px" mx="auto">
+      <Grid
+        templateColumns="30px repeat(8, 1fr)"
+        templateRows="repeat(8, 1fr) 30px"
+        gap={0}
+        bg="white"
+        border="2px"
+        borderColor="gray.300"
+        role="grid"
+        aria-label="Chess board"
+        aspectRatio="1"
+      >
+        {isLoading && (
+          <Center
+            position="absolute"
+            top="0"
+            left="0"
+            right="0"
+            bottom="0"
+            bg="blackAlpha.300"
+            zIndex={1}
+          >
+            <Spinner size="xl" />
+          </Center>
+        )}
+
+        {/* Board squares with rank labels */}
+        {[...Array(8)].map((_, rank) => (
+          <React.Fragment key={rank}>
+            <GridItem
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+            >
+              <Text fontSize="sm" color="gray.600" fontWeight="medium">
+                {8 - rank}
+              </Text>
+            </GridItem>
+            {[...Array(8)].map((_, file) => (
+              <Box key={file} w="full" h="full">
+                {renderSquare(rank * 8 + file)}
+              </Box>
+            ))}
+          </React.Fragment>
+        ))}
+
+        {/* File labels (a-h) */}
+        <GridItem />
+        {[...Array(8)].map((_, file) => (
+          <GridItem
+            key={file}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Text fontSize="sm" color="gray.600" fontWeight="medium">
+              {String.fromCharCode(97 + file)}
+            </Text>
+          </GridItem>
+        ))}
+      </Grid>
+    </Box>
   );
 };
 
