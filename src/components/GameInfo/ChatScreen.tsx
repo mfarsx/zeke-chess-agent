@@ -17,13 +17,20 @@ const ChatScreen: React.FC = () => {
   const messages = useGameStore((state) => state.messages);
   const sendMessage = useGameStore((state) => state.sendMessage);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const bgColor = useColorModeValue("white", "gray.700");
   const bubbleColorUser = useColorModeValue("blue.100", "blue.700");
   const bubbleColorAgent = useColorModeValue("gray.100", "gray.600");
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollContainerRef.current) {
+      const { scrollHeight, clientHeight } = scrollContainerRef.current;
+      scrollContainerRef.current.scrollTo({
+        top: scrollHeight - clientHeight,
+        behavior: "smooth",
+      });
+    }
   };
 
   useEffect(() => {
@@ -51,13 +58,13 @@ const ChatScreen: React.FC = () => {
       h="400px"
       display="flex"
       flexDirection="column"
+      position="relative"
     >
-      <VStack
+      <Box
+        ref={scrollContainerRef}
         flex="1"
         overflowY="auto"
         p={4}
-        spacing={4}
-        alignItems="stretch"
         css={{
           "&::-webkit-scrollbar": {
             width: "4px",
@@ -69,37 +76,41 @@ const ChatScreen: React.FC = () => {
             background: "gray.300",
             borderRadius: "24px",
           },
+          scrollBehavior: "smooth",
         }}
       >
-        {messages.map((msg, index) => (
-          <Flex
-            key={index}
-            justifyContent={msg.sender === "user" ? "flex-end" : "flex-start"}
-          >
-            <Box
-              maxW="80%"
-              bg={msg.sender === "user" ? bubbleColorUser : bubbleColorAgent}
-              px={4}
-              py={2}
-              borderRadius="lg"
+        <VStack spacing={4} alignItems="stretch">
+          {messages.map((msg, index) => (
+            <Flex
+              key={index}
+              justifyContent={msg.sender === "user" ? "flex-end" : "flex-start"}
             >
-              <Text>{msg.text}</Text>
-              <Text fontSize="xs" color="gray.500" mt={1}>
-                {msg.timestamp.toLocaleTimeString()}
-              </Text>
-            </Box>
-          </Flex>
-        ))}
-        <div ref={messagesEndRef} />
-      </VStack>
+              <Box
+                maxW="80%"
+                bg={msg.sender === "user" ? bubbleColorUser : bubbleColorAgent}
+                px={4}
+                py={2}
+                borderRadius="lg"
+              >
+                <Text>{msg.text}</Text>
+                <Text fontSize="xs" color="gray.500" mt={1}>
+                  {msg.timestamp.toLocaleTimeString()}
+                </Text>
+              </Box>
+            </Flex>
+          ))}
+          <div ref={messagesEndRef} style={{ height: "1px" }} />
+        </VStack>
+      </Box>
 
-      <HStack p={4} spacing={2} borderTopWidth={1}>
+      <HStack p={4} spacing={2} borderTopWidth={1} bg={bgColor}>
         <Input
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Type your message..."
           size="md"
+          bg={bgColor}
         />
         <IconButton
           colorScheme="blue"
