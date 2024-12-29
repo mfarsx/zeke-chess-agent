@@ -1,15 +1,9 @@
 declare module "stockfish.js" {
-  export class Engine {
-    constructor();
-    postMessage(message: string): void;
-    onmessage: (event: MessageEvent) => void;
-    addEventListener(
-      type: string,
-      listener: (event: MessageEvent) => void
-    ): void;
-    removeEventListener(
-      type: string,
-      listener: (event: MessageEvent) => void
-    ): void;
-  }
+  const content: string;
+  export default content;
+}
+
+declare module "*.js" {
+  const content: string;
+  export default content;
 }

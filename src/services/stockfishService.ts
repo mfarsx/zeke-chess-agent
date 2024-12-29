@@ -1,7 +1,7 @@
 import { Engine } from "stockfish.js";
 
 class StockfishService {
-  private engine: Engine | null = null;
+  private engine: Worker | null = null;
   private isReady = false;
   private moveTime = 1000; // Default thinking time in milliseconds
   private skill = 10; // Default skill level (0-20)
@@ -11,18 +11,23 @@ class StockfishService {
   }
 
   private initEngine() {
-    this.engine = new Engine();
+    try {
+      // Create a web worker from stockfish.js
+      this.engine = new Worker(new URL("stockfish.js", import.meta.url));
 
-    this.engine.onmessage = (event: MessageEvent) => {
-      const message = event.data;
-      if (message === "uciok") {
-        this.configureEngine();
-      } else if (message === "readyok") {
-        this.isReady = true;
-      }
-    };
+      this.engine.onmessage = (event: MessageEvent) => {
+        const message = event.data;
+        if (message === "uciok") {
+          this.configureEngine();
+        } else if (message === "readyok") {
+          this.isReady = true;
+        }
+      };
 
-    this.engine.postMessage("uci");
+      this.engine.postMessage("uci");
+    } catch (error) {
+      console.error("Failed to initialize Stockfish engine:", error);
+    }
   }
 
   private configureEngine() {
@@ -145,6 +150,7 @@ class StockfishService {
   public cleanup() {
     if (this.engine) {
       this.engine.postMessage("quit");
+      this.engine.terminate();
       this.engine = null;
     }
   }
